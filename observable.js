@@ -26,29 +26,33 @@
          * Fire event with passed arguments 
          * @param {String} event
          * Event name.
-         * @param {Mixed} args
+         * @param {Mixed...} args
          * Arguments to pass to event hanlders (multiple arguments can be passed
          * separated by coma).
          * @return {Boolean}
-         * False if any handler returned false.
+         * False if any handler returned false, true otherwise.
          */
         fire: function (event, args) {
             args    = Array.prototype.slice.call(arguments, 1);
-
             var result  = true;
+            var observers;
+
             if (this.hasObservers(event) && !this.isMuted(event)) {
-                var observers = this.observers[event];
-                for (var i = 0, l = observers.length; i < l; i++) {
-                    var o = observers[i]; 
-                    try {
-                        result = (o.fn.apply(o.scope, args) !== false) && result;
-                    } catch (ex) {
-                        console && console.error && 
-                            console.error(ex.message, ex.stack, ex);
-                    }
-                }
+                observers = this.observers[event];
+                result = this.fireEventOnObservers(event, observers, args);
             }
+
             return result;
+        },
+        
+        /**
+         * Check if there are any observers for passed event
+         * @param {String} event
+         * Event name.
+         * @return {Boolean}
+         */
+        hasObservers: function (event) {
+            return this.hasEvent(event) && this.observers[event].length;
         },
 
         /**
@@ -62,16 +66,6 @@
         },
 
         /**
-         * Check if there are any observers for passed event
-         * @param {String} event
-         * Event name.
-         * @return {Boolean}
-         */
-        hasObservers: function (event) {
-            return this.hasEvent(event) && this.observers[event].length;
-        },
-      
-        /**
          * Check if passed event is muted
          * @param {String} event
          * Event name.
@@ -83,40 +77,31 @@
         },
 
         /**
-         * Mute passed events. When event is muted its observers arent invoked
-         * on event fire. If event name won't be passed all event will be muted
-         * @param {String...} events
-         * Events to mute (separated with coma).
+         * Fire impletentaion
+         * @private
+         * @param {String} event
+         * Event name.
+         * @param {Array} observers
+         * Array with observers to call.
+         * @param {Array} args
+         * Array with arguments to pass to observers
+         * @return {Boolean}
+         * False if any handler returned false, true otherwise.
          */
-        mute: function (events) {
-            if (arguments.length === 0) {
-                this.muteAllEvents = true; 
-            } else {
-                if (!this.mutedEvents) {
-                    this.mutedEvents = {};
-                }
-                events = Array.prototype.slice.call(arguments);
-                for (var i = events.length; --i >= 0;) {
-                    this.mutedEvents[events[i]] = true;        
+        fireEventOnObservers: function (event, observers, args) {
+            var result = true; 
+            var o;
+
+            for (var i = 0, l = observers.length; i < l; i++) {
+                o = observers[i]; 
+                try {
+                    result = (o.fn.apply(o.scope, args) !== false) && result;
+                } catch (ex) {
+                    console && console.error && 
+                        console.error(ex.message, ex.stack, ex);
                 }
             }
-        },
-
-        /**
-         * Remove event handler for passed event
-         * @param {String} event
-         * @param {Function} callback
-         */
-        off: function (event, callback) {
-            if (this.hasEvent(event)) {
-                var observers = this.observers[event];    
-                for (var i = observers.length; --i >= 0;) {
-                    if (observers[i].fn === callback) {
-                        observers.splice(i, 1);
-                        return;
-                    }
-                }
-            }      
+            return result;
         },
 
         /**
@@ -165,7 +150,44 @@
                     + 'Try to add this event with "addEvent" method.');
             }
         },
-        
+
+        /**
+         * Remove event handler for passed event
+         * @param {String} event
+         * @param {Function} callback
+         */
+        off: function (event, callback) {
+            if (this.hasEvent(event)) {
+                var observers = this.observers[event];    
+                for (var i = observers.length; --i >= 0;) {
+                    if (observers[i].fn === callback) {
+                        observers.splice(i, 1);
+                        return;
+                    }
+                }
+            }      
+        },
+
+        /**
+         * Mute passed events. When event is muted its observers arent invoked
+         * on event fire. If event name won't be passed all event will be muted
+         * @param {String...} events
+         * Events to mute (separated with coma).
+         */
+        mute: function (events) {
+            if (arguments.length === 0) {
+                this.muteAllEvents = true; 
+            } else {
+                if (!this.mutedEvents) {
+                    this.mutedEvents = {};
+                }
+                events = Array.prototype.slice.call(arguments);
+                for (var i = events.length; --i >= 0;) {
+                    this.mutedEvents[events[i]] = true;        
+                }
+            }
+        },
+
         /**
          * Unmute passed events. Unmute all when there is no arguments.
          * @param {String...} events

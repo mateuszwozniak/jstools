@@ -1,4 +1,4 @@
-buster.testCase('defineClass test', {
+buster.testCase('defineClass', {
 
     setUp: function () {
         this.foo = function () {};
